@@ -54,8 +54,7 @@ function serverUdp:update(dt)
 				self.callbacks.recv(data, clientid)
 			end
 		end
-		-- Mark as 'ping receive', -dt because dt is added after.
-		-- (Which means a net result of 0.)
+		-- Mark as ping received, -dt because dt is added after, which means a net result of 0.
 		if self.clients[clientid] then
 			self.clients[clientid].ping = -dt
 		end
@@ -63,14 +62,14 @@ function serverUdp:update(dt)
 	end
 	if self.ping then
 		-- Calculate each client's ping. If it exceeds the limit we set, disconnect the client.
-		for client, v in pairs(self.clients) do
-			v.ping = v.ping + dt
-			print(client,tostring(v.ping*100).."MS")
-			if v.ping > self.ping.time then
-				self.clients[client] = nil
+		for id, client in pairs(self.clients) do
+			client.ping = client.ping + dt
+			print(id,tostring(client.ping*100).."MS")
+			if client.ping > self.ping.time then
 				if self.callbacks.disconnect then
-					self.callbacks.disconnect(client)
+					self.callbacks.disconnect("",id)
 				end
+				self.clients[id] = nil
 			end
 		end
 	end

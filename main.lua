@@ -96,7 +96,8 @@ function love.load()
 		--local header, body = data:match("^(ID_%d)(.+)$")		-- ID_NUM %d = single numeric value
 		local header, body = data:match("^(%S*) (.*)")		-- ID_NUM %d = single numeric value
 
-		if header == "ID_1" then		-- movement packet	to do: replace all packet headers with enums
+		-- Movement packet	to do: enumerate all packet headers
+		if header == "ID_1" then		
 			server.test = server.test + 1
 			
 			local packet = format("%s %s %s", "ID_1", body, clientid)
@@ -125,17 +126,17 @@ function love.load()
 		
 		for _clientid, _ in pairs(server.clients) do
 			if clientid ~= _clientid then
-				-- notify current users about new user
+				-- Notify current clients about new client
 				local toUsers 	= format("%s %s", "ID_0", clientid)
 				server:send(toUsers,_clientid)
 
-				-- notify new user about current users	
+				-- Notify new client about current clients	
 				local toUser	= format("%s %s", "ID_0", _clientid)
 				server:send(toUser,clientid)
 				
 				local name = server.clients[_clientid].name
 				if name then
-					-- notify new user about current user name		
+					-- Notify new client about current client name		
 					local packet = format("%s %s %s", "ID_2", server.clients[_clientid].name, _clientid)
 					server:send(packet, clientid)
 				end
@@ -149,10 +150,8 @@ function love.load()
 	function client_disconnect(data,clientid)
 		print(data)
 		server.log("Client Disconnected: "..clientid)	
-		for _clientid, _ in pairs(server.clients) do
-			local packet = format("%s %s", "ID_0", clientid)
-			server:send(packet, _clientid)
-		end
+		local packet = format("%s %s", "ID_0", clientid)
+		server:send(packet)
 	end
 	
 
@@ -200,13 +199,12 @@ function love.update(dt)
 	server:update(dt)
 	moveBuffer:update(dt)
 	
-	-- check for time out
-	local curTime = lt.getTime()
-	for i,v in pairs(server.clients) do
-		if curTime - v.lastAck > 6 then
-			server.callbacks.disconnect("",i)
-			server.clients[i] = nil
-		end
+	-- Check for time out
+	for id,client in pairs(server.clients) do
+		if client.ping > 6 then
+			server.callbacks.disconnect("",id)
+			server.clients[id] = nil
+		end			
 	end
 	
 	local connectionsThisTick		= server:connected()

@@ -10,7 +10,7 @@ function serverUdp:init(portNumber)
 		connect = nil,
 		disconnect = nil,
 	}
-	self.ping = {msg = "!", time = 5, max = 1000}
+	self.ping = {msg = "!", time = 2, max = 5}
 	self.port = portNumber
 
 	-- Create the socket, set the port and listen.
@@ -21,10 +21,12 @@ function serverUdp:init(portNumber)
 end
 
 function serverUdp:update(dt)
+	local currTime = love.timer.getTime()
 	local data, clientid = self:receive()
 	while data do
+		local client = self.clients[clientid]
 		local hsfilter, conn = data:match("^(.+)([%+%-])\n?$")	--should optimize handshake split
-		local hs,otherhalf
+		local hs, otherhalf
 		
 		if hsfilter then 
 			--hs,otherhalf = hsfilter:match("^(.-):(.+)$") 		
@@ -34,16 +36,16 @@ function serverUdp:update(dt)
 		if hs == self.handshake then
 			if conn == "+" then
 				-- If we already knew the client, ignore.
-				if not self.clients[clientid] then
-					self.clients[clientid] = {counter = 0, ping = 0, t1 = love.timer.getTime()}
+				if not client then
+					client = {counter = 0, ping = 0, t1 = currTime, t2 = currTime}
 					if self.callbacks.connect then
 						self.callbacks.connect(otherhalf, clientid)
 					end
 				end
 			elseif conn == "-" then
 				-- Ignore unknown clients (perhaps they timed out before?).
-				if self.clients[clientid] then
-					self.clients[clientid] = nil
+				if client then
+					client = nil
 					if self.callbacks.disconnect then
 						self.callbacks.disconnect(otherhalf, clientid)
 					end
@@ -56,10 +58,11 @@ function serverUdp:update(dt)
 			end
 		else
 			-- Mark as ping received, -dt because dt is added after, which means a net result of 0.
-			if self.clients[clientid] and self.clients[clientid].t1 then
-				self.clients[clientid].ping = 100 * (love.timer.getTime() - self.clients[clientid].t1)
-				print(clientid,tostring(self.clients[clientid].ping).." MS")
-				self.clients[clientid].t1 = nil
+			if client and client.t1 then
+				client.t2 = currTime
+				client.ping = 100 * (client.t2 - client.t1)
+				print(clientid,tostring(client.ping).." MS")
+				client.t1 = nil
 			end
 		end
 		data, clientid = self:receive()
@@ -70,10 +73,11 @@ function serverUdp:update(dt)
 			client.counter = client.counter + dt
 			if client.counter > self.ping.time then
 				self:send(self.ping.msg..tostring(math.round(client.ping)), id)
-				client.t1 = love.timer.getTime()
+				client.t1 = currTime
 				client.counter = 0
 			end
-			if client.ping > self.ping.max then
+			print(currTime - client.t2)
+			if (currTime - client.t2) > self.ping.max then
 				print("kicked")
 				if self.callbacks.disconnect then
 					self.callbacks.disconnect("",id)

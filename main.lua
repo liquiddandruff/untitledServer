@@ -89,13 +89,9 @@ function love.load()
 	love.mouse.setVisible(true)
 
 	local format = string.format
-	function client_data(data, clientid)
-		if server.clients[clientid] then
-			server.clients[clientid].lastAck = lt.getTime()
-		end
+	function client_data(header, body, clientid)
 		--local header, body = data:match("^(ID_%d)(.+)$")		-- ID_NUM %d = single numeric value
-		local header, body = data:match("^(%S*) (.*)")		-- ID_NUM %d = single numeric value
-
+		--local header, body = data:match("^(%S*) (.*)")		-- ID_NUM %d = single numeric value
 		-- Movement packet	to do: enumerate all packet headers
 		if header == "ID_1" then		
 			server.test = server.test + 1
@@ -116,7 +112,7 @@ function love.load()
 	end
 	
 	function client_connect(data, clientid)
-		server.clients[clientid].lastAck = lt.getTime()
+		server.clients[clientid].joinTime = lt.getTime()
 		--local x,y,health = data:match("^(.-):(.-):(.+)$")
 		--print("x: "..x.." y: "..y.." health: "..health)
 		server.log("Client Connected: "..clientid)
@@ -148,8 +144,7 @@ function love.load()
 	end
 	
 	function client_disconnect(data,clientid)
-		print(data)
-		server.log("Client Disconnected: "..clientid)	
+		server.log("Client Disconnected: "..clientid)
 		local packet = format("%s %s", "ID_0", clientid)
 		server:send(packet)
 	end
@@ -159,7 +154,6 @@ function love.load()
 	
 	server._log 		= {}
 	
-	server.handshake 	= "ID_HS"
 	server.test 		= 0
 	server.callbacks 	= {
 		recv 			= client_data,

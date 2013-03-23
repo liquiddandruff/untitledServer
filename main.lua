@@ -90,16 +90,19 @@ function love.load()
 
 	local format = string.format
 	function client_data(header, body, clientid)
+		server.log("Header: "..header.."  Body: "..body)
 		--local header, body = data:match("^(ID_%d)(.+)$")		-- ID_NUM %d = single numeric value
 		--local header, body = data:match("^(%S*) (.*)")		-- ID_NUM %d = single numeric value
-		-- Movement packet	to do: enumerate all packet headers
+		if not server.clients[clientid] then 
+			print("Received "..header.." from unknown client:", clientid)
+			return
+		end
+
 		if header == "ID_1" then		
 			server.test = server.test + 1
 			
 			local packet = format("%s %s %s", "ID_1", body, clientid)
-			--moveBuffer:push(body,clientid,packet)
 			moveBuffer:push(body.." "..clientid,clientid)
-			--server:send(packet)
 		elseif	header == "ID_2" then
 			local name = body
 			server.clients[clientid].name = name
@@ -107,8 +110,6 @@ function love.load()
 			local packet = format("%s %s %s", "ID_2", body, clientid)
 			server:send(packet)
 		end
-
-		server.log("Header: "..header.."  Body: "..body)
 	end
 	
 	function client_connect(data, clientid)
@@ -119,7 +120,6 @@ function love.load()
 		
 		local packet = format("%s %s", server.handshake, clientid)
 		server:send(packet, clientid)
-		
 		for _clientid, _ in pairs(server.clients) do
 			if clientid ~= _clientid then
 				-- Notify current clients about new client
@@ -192,14 +192,6 @@ function love.update(dt)
 	
 	server:update(dt)
 	moveBuffer:update(dt)
-	
-	-- Check for time out
-	for id,client in pairs(server.clients) do
-		if client.ping > 6 then
-			server.callbacks.disconnect("",id)
-			server.clients[id] = nil
-		end			
-	end
 	
 	local connectionsThisTick		= server:connected()
 	if connectionsThisTick ~= connectionsLastTick then

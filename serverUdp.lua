@@ -26,7 +26,7 @@ function serverUdp:update(dt)
 	while data do
 		local client = self.clients[clientid]
 		local header, body = data:match("^(%S+) (.+)")
-		print("DATA :",data,header,body,"\n")
+		-- print("serverUdp:update:",data,clientid)
 
 		if header == self.handshake then
 			local conn = body:match("^([%+%-])\n?")
@@ -46,7 +46,6 @@ function serverUdp:update(dt)
 					if self.callbacks.disconnect then
 						self.callbacks.disconnect(futureData, clientid)
 					end
-					print("CONN-")
 					self.clients[clientid] = nil
 				end	
 			end
@@ -97,7 +96,7 @@ function serverUdp:send(data, clientid)		-- do send(data,from,to) to prevent ret
 		for clientid, _ in pairs(self.clients) do
 			local ip, port = clientid:match("^(.-):(%d+)$")
 			self.socket:sendto(data, ip, tonumber(port))
-			print("serverUdp:send: ", data.." sent to "..clientid)
+			-- print("serverUdp:send: ", data.." sent to "..clientid)
 		end
 	end
 end
